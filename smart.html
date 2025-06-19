@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Expense Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f5f7fa;
+      margin: 0;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 30px;
+      font-size: 2.5rem;
+    }
+    
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+    
+    .summary-card {
+      background: linear-gradient(135deg, #3498db, #2c3e50);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .form-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+    }
+    
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .form-group {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+    
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    
+    button {
+      background-color: #2ecc71;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      font-weight: bold;
+    }
+    
+    button:hover {
+      background-color: #27ae60;
+    }
+    
+    .btn-secondary {
+      background-color: #3498db;
+    }
+    
+    .btn-secondary:hover {
+      background-color: #2980b9;
+    }
+    
+    .btn-danger {
+      background-color: #e74c3c;
+    }
+    
+    .btn-danger:hover {
+      background-color: #c0392b;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    th {
+      background-color: #2c3e50;
+      color: white;
+    }
+    
+    tr:hover {
+      background-color: #f5f5f5;
+    }
+    
+    .chart-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+    }
+    
+    .ocr-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+    }
+    
+    .preview-image {
+      max-width: 300px;
+      max-height: 300px;
+      margin-top: 15px;
+      display: none;
+    }
+    
+    .export-section {
+      text-align: center;
+      margin-top: 30px;
+    }
+    
+    @media (max-width: 768px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Smart Expense Tracker</h1>
+    
+    <div class="dashboard">
+      <div class="summary-card">
+        <h2>Total Spent</h2>
+        <p id="totalAmount">$0.00</p>
+      </div>
+      <div class="summary-card">
+        <h2>This Month</h2>
+        <p id="monthlyAmount">$0.00</p>
+      </div>
+    </div>
+    
+    <div class="form-section">
+      <h2>Add New Expense</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="amount">Amount ($)</label>
+          <input type="number" id="amount" step="0.01" min="0" placeholder="0.00" required>
+        </div>
+        <div class="form-group">
+          <label for="category">Category</label>
+          <select id="category" required>
+            <option value="">Select Category</option>
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Housing">Housing</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Healthcare">Healthcare</option>
+            <option value="Education">Education</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="date">Date</label>
+          <input type="date" id="date" required>
+        </div>
+        <div class="form-group">
+          <label for="description">Description (Optional)</label>
+          <input type="text" id="description" placeholder="Brief description">
+        </div>
+      </div>
+      <button onclick="addExpense()">Add Expense</button>
+    </div>
+    
+    <div class="ocr-section">
+      <h2>Scan Receipt (OCR)</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="receiptUpload">Upload Receipt</label>
+          <input type="file" id="receiptUpload" accept="image/*">
+        </div>
+      </div>
+      <img id="previewImage" class="preview-image" alt="Receipt Preview">
+      <button onclick="scanReceipt()" class="btn-secondary">Scan Receipt</button>
+      <div id="ocrResult" style="margin-top: 15px;"></div>
+    </div>
+    
+    <div class="chart-container">
+      <h2>Spending Overview</h2>
+      <canvas id="expenseChart"></canvas>
+    </div>
+    
+    <h2>Recent Expenses</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Amount</th>
+          <th>Category</th>
+          <th>Description</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="expenseList"></tbody>
+    </table>
+    
+    <div class="export-section">
+      <button onclick="exportToPDF()" class="btn-secondary">Export to PDF</button>
+      <button onclick="exportToExcel()" class="btn-secondary">Export to Excel</button>
+    </div>
+  </div>
+
+  <script>
+    // Initialize expenses array from localStorage
+    let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+    let expenseChart = null;
+
+    // DOM Elements
+    const expenseTable = document.getElementById('expenseList');
+    const amountInput = document.getElementById('amount');
+    const categoryInput = document.getElementById('category');
+    const dateInput = document.getElementById('date');
+    const descriptionInput = document.getElementById('description');
+    const totalAmountElement = document.getElementById('totalAmount');
+    const monthlyAmountElement = document.getElementById('monthlyAmount');
+    const receiptUpload = document.getElementById('receiptUpload');
+    const previewImage = document.getElementById('previewImage');
+    const ocrResult = document.getElementById('ocrResult');
+
+    // Set default date to today
+    dateInput.valueAsDate = new Date();
+
+    // Initialize the app
+    function init() {
+      renderExpenses();
+      updateSummary();
+      updateChart();
+      
+      // Preview image when file is selected
+      receiptUpload.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            previewImage.src = e.target.result;
+            previewImage.style.display = 'block';
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    // Render expenses table
+    function renderExpenses() {
+      expenseTable.innerHTML = '';
+      
+      // Sort by date (newest first)
+      const sortedExpenses = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+      
+      sortedExpenses.forEach((expense, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${formatDate(expense.date)}</td>
+          <td>$${parseFloat(expense.amount).toFixed(2)}</td>
+          <td>${expense.category}</td>
+          <td>${expense.description || '-'}</td>
+          <td>
+            <button onclick="editExpense(${index})" class="btn-secondary" style="padding: 5px 10px; margin-right: 5px;">Edit</button>
+            <button onclick="deleteExpense(${index})" class="btn-danger" style="padding: 5px 10px;">Delete</button>
+          </td>
+        `;
+        expenseTable.appendChild(row);
+      });
+    }
+
+    // Add new expense
+    function addExpense() {
+      const amount = parseFloat(amountInput.value);
+      const category = categoryInput.value;
+      const date = dateInput.value;
+      const description = descriptionInput.value;
+
+      if (!amount || isNaN(amount) || !category || !date) {
+        alert('Please fill all required fields with valid data!');
+        return;
+      }
+
+      expenses.push({ 
+        amount: amount.toFixed(2), 
+        category, 
+        date, 
+        description 
+      });
+      
+      saveExpenses();
+      resetForm();
+      renderExpenses();
+      updateSummary();
+      updateChart();
+    }
+
+    // Edit expense
+    function editExpense(index) {
+      const expense = expenses[index];
+      amountInput.value = expense.amount;
+      categoryInput.value = expense.category;
+      dateInput.value = expense.date;
+      descriptionInput.value = expense.description || '';
+      
+      // Remove the old expense
+      expenses.splice(index, 1);
+      saveExpenses();
+      renderExpenses();
+      updateSummary();
+      updateChart();
+    }
+
+    // Delete expense
+    function deleteExpense(index) {
+      if (confirm('Are you sure you want to delete this expense?')) {
+        expenses.splice(index, 1);
+        saveExpenses();
+        renderExpenses();
+        updateSummary();
+        updateChart();
+      }
+    }
+
+    // Save expenses to localStorage
+    function saveExpenses() {
+      localStorage.setItem('expenses', JSON.stringify(expenses));
+    }
+
+    // Reset form
+    function resetForm() {
+      amountInput.value = '';
+      categoryInput.value = '';
+      dateInput.valueAsDate = new Date();
+      descriptionInput.value = '';
+    }
+
+    // Update summary cards
+    function updateSummary() {
+      const total = expenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+      totalAmountElement.textContent = `$${total.toFixed(2)}`;
+      
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const monthlyTotal = expenses
+        .filter(expense => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
+        })
+        .reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+      
+      monthlyAmountElement.textContent = `$${monthlyTotal.toFixed(2)}`;
+    }
+
+    // Update chart
+    function updateChart() {
+      const ctx = document.getElementById('expenseChart').getContext('2d');
+      
+      // Group expenses by category
+      const categoryMap = {};
+      expenses.forEach(expense => {
+        if (!categoryMap[expense.category]) {
+          categoryMap[expense.category] = 0;
+        }
+        categoryMap[expense.category] += parseFloat(expense.amount);
+      });
+      
+      const categories = Object.keys(categoryMap);
+      const amounts = Object.values(categoryMap);
+      
+      // Destroy previous chart if exists
+      if (expenseChart) {
+        expenseChart.destroy();
+      }
+      
+      // Create new chart
+      expenseChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: categories,
+          datasets: [{
+            label: 'Amount ($)',
+            data: amounts,
+            backgroundColor: [
+              '#3498db', '#2ecc71', '#f1c40f', '#e74c3c', '#9b59b6', 
+              '#1abc9c', '#d35400', '#34495e', '#7f8c8d'
+            ],
+            borderColor: [
+              '#2980b9', '#27ae60', '#f39c12', '#c0392b', '#8e44ad',
+              '#16a085', '#e67e22', '#2c3e50', '#95a5a6'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              display: false
+            },
+            title: {
+              display: true,
+              text: 'Expenses by Category',
+              font: {
+                size: 18
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return '$' + value;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Scan receipt using OCR
+    function scanReceipt() {
+      if (!previewImage.src) {
+        alert('Please upload a receipt image first!');
+        return;
+      }
+      
+      ocrResult.innerHTML = '<p>Scanning receipt... This may take a moment.</p>';
+      
+      Tesseract.recognize(
+        previewImage.src,
+        'eng',
+        { logger: m => console.log(m) }
+      ).then(({ data: { text } }) => {
+        ocrResult.innerHTML = `<pre>${text}</pre>`;
+        
+        // Try to extract amount
+        const amountMatch = text.match(/(\d+\.\d{2})|(\d+\,\d{2})/);
+        if (amountMatch) {
+          let amount = amountMatch[0];
+          // Replace comma with dot if needed
+          if (amount.includes(',')) {
+            amount = amount.replace(',', '.');
+          }
+          amountInput.value = amount;
+          ocrResult.innerHTML += `<p>Detected amount: $${amount}</p>`;
+        }
+      }).catch(err => {
+        ocrResult.innerHTML = `<p>Error scanning receipt: ${err.message}</p>`;
+      });
+    }
+
+    // Export to PDF
+    function exportToPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      // Title
+      doc.setFontSize(20);
+      doc.text('Expense Report', 105, 15, { align: 'center' });
+      
+      // Summary
+      doc.setFontSize(12);
+      doc.text(`Total Expenses: $${expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0).toFixed(2)}`, 14, 25);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+      
+      // Table header
+      doc.setFillColor(44, 62, 80);
+      doc.setTextColor(255, 255, 255);
+      doc.rect(14, 40, 182, 10, 'F');
+      doc.text('Date', 20, 46);
+      doc.text('Amount', 60, 46);
+      doc.text('Category', 100, 46);
+      doc.text('Description', 140, 46);
+      
+      // Table rows
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      let y = 50;
+      
+      // Sort by date
+      const sortedExpenses = [...expenses].sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      sortedExpenses.forEach(expense => {
+        y += 7;
+        if (y > 280) { // New page if needed
+          doc.addPage();
+          y = 20;
+          // Repeat header on new page
+          doc.setFontSize(12);
+          doc.setFillColor(44, 62, 80);
+          doc.setTextColor(255, 255, 255);
+          doc.rect(14, 10, 182, 10, 'F');
+          doc.text('Date', 20, 16);
+          doc.text('Amount', 60, 16);
+          doc.text('Category', 100, 16);
+          doc.text('Description', 140, 16);
+          doc.setFontSize(10);
+          doc.setTextColor(0, 0, 0);
+          y = 20;
+        }
+        
+        doc.text(formatDate(expense.date), 20, y);
+        doc.text(`$${expense.amount}`, 60, y);
+        doc.text(expense.category, 100, y);
+        doc.text(expense.description || '-', 140, y);
+      });
+      
+      // Save the PDF
+      doc.save('expense_report.pdf');
+    }
+
+    // Export to Excel (CSV)
+    function exportToExcel() {
+      let csv = 'Date,Amount,Category,Description\n';
+      
+      // Sort by date
+      const sortedExpenses = [...expenses].sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      sortedExpenses.forEach(expense => {
+        csv += `"${formatDate(expense.date)}",${expense.amount},"${expense.category}","${expense.description || ''}"\n`;
+      });
+      
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'expense_report.csv');
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Format date for display
+    function formatDate(dateString) {
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString(undefined, options);
+    }
+
+    // Initialize the app when page loads
+    window.onload = init;
+  </script>
+</body>
+</html>
